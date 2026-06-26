@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Twelve</title>
+<style>
+:root{
+  --bg:#10100e;
+  --panel:#181815;
+  --panel2:#1f1f1b;
+  --line:#2c2c26;
+  --ink:#e8e4d8;
+  --dim:#8a8576;
+  --brass:#c79b4a;
+  --brass-dim:#806224;
+  --red:#c2452f;
+  --green:#5a8a52;
+  --blue:#4878a8;
+  --yellow:#d4af37;
+  --pan-l:#2a2a24;
+  --pan-r:#2a2a24;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;line-height:1.45}
+body{max-width:980px;margin:0 auto;padding:18px 16px 80px}
+h1{font-family:'Bebas Neue','Arial Narrow',sans-serif;font-weight:400;letter-spacing:.12em;font-size:42px;line-height:.95}
+.sub{color:var(--dim);font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-top:4px}
+header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.modebox{display:flex;gap:6px;align-items:center}
+.tab{background:var(--panel);border:1px solid var(--line);color:var(--dim);padding:7px 12px;cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.tab.on{background:var(--brass);border-color:var(--brass);color:#10100e}
+.weighcount{font-family:'Bebas Neue','Arial Narrow',sans-serif;font-size:30px;letter-spacing:.05em;color:var(--brass)}
+.weighcount small{color:var(--dim);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:.1em}
+
+/* Scale */
+.scale-wrap{background:var(--panel);border:1px solid var(--line);padding:20px 16px 8px;margin-bottom:14px;position:relative;overflow:hidden}
+.beam-area{height:200px;position:relative;display:flex;justify-content:center;align-items:flex-start}
+.fulcrum{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:64px solid var(--line)}
+.fulcrum:after{content:"";position:absolute;bottom:-64px;left:-44px;width:88px;height:6px;background:var(--brass-dim)}
+.beam{position:absolute;top:18px;left:50%;width:560px;max-width:88%;height:6px;background:var(--brass);transform-origin:center;transform:translateX(-50%) rotate(0deg);transition:transform .7s cubic-bezier(.34,1.3,.5,1)}
+.beam:before{content:"";position:absolute;left:50%;top:-7px;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--brass)}
+.pan{position:absolute;top:0;width:46%;display:flex;flex-direction:column;align-items:center;transition:transform .7s cubic-bezier(.34,1.3,.5,1)}
+.pan.left{left:1%}
+.pan.right{right:1%}
+.chain{width:1px;height:30px;background:var(--dim)}
+.dish{min-height:62px;max-height:104px;overflow-y:auto;width:100%;background:var(--panel2);border:1px solid var(--line);border-top:2px solid var(--brass-dim);border-radius:0 0 40px 40px;padding:8px 6px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:flex-start}
+.dish.hot{border-color:var(--brass);background:#23231d}
+.dish::-webkit-scrollbar{width:5px}
+.dish::-webkit-scrollbar-thumb{background:var(--brass-dim);border-radius:3px}
+.panlabel{font-size:10px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:6px;height:12px}
+.verdict{text-align:center;height:20px;font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);margin-top:6px}
+.weighbtn{display:block;width:100%;margin-top:10px;background:var(--brass);color:#10100e;border:none;padding:14px;font-family:'Bebas Neue','Arial Narrow',sans-serif;font-size:22px;letter-spacing:.18em;cursor:pointer}
+.weighbtn:disabled{background:var(--panel2);color:var(--dim);cursor:not-allowed}
+.weighbtn:not(:disabled):active{transform:translateY(1px)}
+
+/* Bench */
+.bench-head{display:flex;justify-content:space-between;align-items:center;margin:8px 0 8px}
+.bench-head .lbl{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.bench{background:var(--panel);border:1px solid var(--line);padding:12px;min-height:78px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+.bench.hot{border-color:var(--brass)}
+
+.ball{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#3a3a32,#1a1a16);border:1px solid var(--line);color:var(--ink);font-family:'Bebas Neue','Arial Narrow',sans-serif;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:grab;position:relative;user-select:none;touch-action:none;transition:box-shadow .15s,transform .1s}
+.ball:active{cursor:grabbing}
+.ball.drag{opacity:.35}
+.ball.c-red{box-shadow:inset 0 0 0 3px var(--red)}
+.ball.c-green{box-shadow:inset 0 0 0 3px var(--green)}
+.ball.c-blue{box-shadow:inset 0 0 0 3px var(--blue)}
+.ball.c-yellow{box-shadow:inset 0 0 0 3px var(--yellow)}
+.ball.sel{outline:2px solid var(--brass);outline-offset:2px}
+.ball .dot{position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;border:1px solid var(--bg)}
+.dot.c-red{background:var(--red)}.dot.c-green{background:var(--green)}.dot.c-blue{background:var(--blue)}.dot.c-yellow{background:var(--yellow)}
+.ball.small{width:36px;height:36px;font-size:16px}
+.dish .ball.small{margin:0}
+
+/* palette */
+.palette{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.swatch{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);cursor:pointer}
+.swatch.on{outline:2px solid var(--ink);outline-offset:1px}
+.swatch.x{background:var(--panel2);position:relative}
+.swatch.x:after{content:"";position:absolute;inset:8px;background:var(--dim);height:2px;top:10px}
+.sw-red{background:var(--red)}.sw-green{background:var(--green)}.sw-blue{background:var(--blue)}.sw-yellow{background:var(--yellow)}
+.hint{font-size:11px;color:var(--dim);margin-top:6px}
+.placebar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line)}
+.pb-lbl{font-size:12px;color:var(--dim)}
+.pb-lbl b{color:var(--brass);font-family:'Bebas Neue','Arial Narrow',sans-serif;font-size:18px;letter-spacing:.05em}
+.pb-or{color:var(--dim);font-size:11px}
+.tappable.target{outline:2px dashed var(--brass);outline-offset:-4px}
+
+/* layout cols */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.beam{width:420px}}
+.card{background:var(--panel);border:1px solid var(--line);padding:14px}
+.card h2{font-family:'Bebas Neue','Arial Narrow',sans-serif;font-weight:400;letter-spacing:.1em;font-size:20px;color:var(--brass);margin-bottom:10px}
+textarea{width:100%;min-height:130px;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:13px;padding:10px;resize:vertical}
+textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+
+.loglist{list-style:none;font-size:12px}
+.loglist li{padding:7px 0;border-bottom:1px solid var(--line);color:var(--dim)}
+.loglist li:last-child{border:none}
+.loglist b{color:var(--ink)}
+.tip{color:var(--brass)}.tilt-l{color:var(--blue)}.tilt-r{color:var(--red)}
+
+/* guess */
+.guessrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+select{background:var(--bg);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:13px;padding:8px}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:12px;letter-spacing:.08em;padding:9px 14px;cursor:pointer;text-transform:uppercase}
+.btn:hover{border-color:var(--brass)}
+.btn.primary{background:var(--brass);color:#10100e;border-color:var(--brass)}
+.result{margin-top:10px;padding:12px;border:1px solid var(--line);font-size:13px;display:none}
+.result.win{display:block;border-color:var(--green);background:#16201a;color:#bfe0b0}
+.result.lose{display:block;border-color:var(--red);background:#231512;color:#e8b3a6}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.foot{text-align:center;color:var(--dim);font-size:11px;letter-spacing:.1em;margin-top:24px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>The Twelve</h1>
+    <div class="sub">Balance puzzle testbed</div>
+  </div>
+  <div style="text-align:right">
+    <div class="modebox" style="justify-content:flex-end">
+      <button class="tab on" id="tabClassic">Classic &middot; 3 weighings</button>
+      <button class="tab" id="tabInfinite">Practice &middot; &infin;</button>
+    </div>
+    <div class="weighcount" id="counter" style="margin-top:8px"></div>
+  </div>
+</header>
+
+<div class="scale-wrap">
+  <div class="beam-area">
+    <div class="beam" id="beam">
+      <div class="pan left" id="panLeftWrap">
+        <div class="panlabel">Left</div>
+        <div class="chain"></div>
+        <div class="dish drop tappable" id="left" data-side="left"></div>
+      </div>
+      <div class="pan right" id="panRightWrap">
+        <div class="panlabel">Right</div>
+        <div class="chain"></div>
+        <div class="dish drop tappable" id="right" data-side="right"></div>
+      </div>
+    </div>
+    <div class="fulcrum"></div>
+  </div>
+  <div class="verdict" id="verdict">Place balls on the pans</div>
+  <button class="weighbtn" id="weighBtn">Weigh</button>
+</div>
+
+<div class="bench-head">
+  <span class="lbl">Bench &middot; <span id="benchCount">12</span> balls</span>
+  <div class="palette" id="palette">
+    <span class="swatch x on" data-color="" title="No mark"></span>
+    <span class="swatch sw-red" data-color="red"></span>
+    <span class="swatch sw-green" data-color="green"></span>
+    <span class="swatch sw-blue" data-color="blue"></span>
+    <span class="swatch sw-yellow" data-color="yellow"></span>
+  </div>
+</div>
+<div class="bench drop tappable" id="bench" data-side="bench"></div>
+<div class="placebar" id="placebar">
+  <span class="pb-lbl">Selected <b id="selName">none</b> &rarr; send to</span>
+  <button class="btn" id="sendLeft">Left pan</button>
+  <button class="btn" id="sendRight">Right pan</button>
+  <button class="btn" id="sendBench">Bench</button>
+  <span class="pb-or">or</span>
+  <button class="btn" id="markBtn">Mark colour</button>
+</div>
+<div class="hint">Tap a ball to select it, then tap a pan (or use the buttons). Drag also works where supported. The colour swatch on the right sets what <b>Mark colour</b> applies.</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Notes</h2>
+    <textarea id="notes" placeholder="Track what you've deduced. e.g. 1-4 vs 5-8 balanced &rarr; odd ball in 9-12"></textarea>
+  </div>
+  <div class="card">
+    <h2>Weigh log</h2>
+    <ul class="loglist" id="log"><li>No weighings yet.</li></ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Final answer</h2>
+  <div class="guessrow">
+    <span>Ball</span>
+    <select id="guessBall"></select>
+    <span>is</span>
+    <select id="guessDir">
+      <option value="heavy">Heavier</option>
+      <option value="light">Lighter</option>
+    </select>
+    <button class="btn primary" id="submitGuess">Submit guess</button>
+    <button class="btn" id="reveal">Give up &amp; reveal</button>
+  </div>
+  <div class="toolbar">
+    <button class="btn" id="newRound">New round</button>
+    <button class="btn" id="clearPans">Clear pans</button>
+    <button class="btn" id="clearMarks">Clear marks</button>
+  </div>
+  <div class="result" id="result"></div>
+</div>
+
+<div class="foot">One ball differs. You don't know which, or whether it's heavy or light.</div>
+
+<script>
+var TOTAL=12;
+var state={mode:'classic',max:3,used:0,odd:null,dir:null,solved:false,color:'',sel:null};
+
+/* ---- audio: each pan arpeggiates a chord as balls land ---- */
+var actx=null;
+// frequencies (Hz). Left = C7 voicing C E G Bb D F. Right = Ebm7 extended Eb Gb Bb Db F Ab.
+var CHORD={
+  left:[261.63,329.63,392.00,466.16,587.33,698.46],
+  right:[311.13,369.99,466.16,554.37,698.46,830.61]
+};
+function audioCtx(){
+  if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){actx=null;}}
+  if(actx&&actx.state==='suspended'){actx.resume();}
+  return actx;
+}
+function playNote(freq){
+  var c=audioCtx();if(!c)return;
+  var t=c.currentTime;
+  var o=c.createOscillator(),g=c.createGain();
+  o.type='triangle';o.frequency.value=freq;
+  // soft bell-ish pluck
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(0.18,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0008,t+0.9);
+  o.connect(g);g.connect(c.destination);
+  o.start(t);o.stop(t+0.95);
+}
+function playPanNote(side,countAfter){
+  var arr=CHORD[side];if(!arr)return;
+  var idx=countAfter-1;
+  if(idx<0)return;
+  if(idx<arr.length){playNote(arr[idx]);}
+  else{playNote(arr[idx%arr.length]*2);} // beyond 6: octave up, wrap
+}
+var balls={}; // id -> {color, loc}
+
+function $(id){return document.getElementById(id);}
+
+function newRound(){
+  state.used=0;state.solved=false;state.sel=null;
+  if($('selName'))$('selName').textContent='none';
+  state.odd=Math.floor(Math.random()*TOTAL)+1;
+  state.dir=Math.random()<0.5?'heavy':'light';
+  balls={};
+  for(var i=1;i<=TOTAL;i++){balls[i]={color:'',loc:'bench'};}
+  $('log').innerHTML='<li>No weighings yet.</li>';
+  $('result').className='result';
+  $('result').textContent='';
+  $('verdict').textContent='Place balls on the pans';
+  $('beam').style.transform='translateX(-50%) rotate(0deg)';
+  $('panLeftWrap').style.transform='';
+  $('panRightWrap').style.transform='';
+  render();updateCounter();
+}
+
+function updateCounter(){
+  if(state.mode==='infinite'){
+    $('counter').innerHTML=state.used+' <small>weighings</small>';
+  }else{
+    var left=state.max-state.used;
+    $('counter').innerHTML=left+' <small>of '+state.max+' left</small>';
+  }
+}
+
+function ballEl(id,small){
+  var b=balls[id];
+  var span=document.createElement('div');
+  span.className='ball'+(small?' small':'')+(b.color?' c-'+b.color:'')+(state.sel==id?' sel':'');
+  span.setAttribute('draggable','true');
+  span.dataset.id=id;
+  span.textContent=id;
+  if(b.color){
+    var d=document.createElement('span');
+    d.className='dot c-'+b.color;
+    span.appendChild(d);
+  }
+  return span;
+}
+
+function render(){
+  var benchEl=$('bench'),leftEl=$('left'),rightEl=$('right');
+  benchEl.innerHTML='';leftEl.innerHTML='';rightEl.innerHTML='';
+  // count load per pan so we can shrink balls when a pan is full
+  var lc=0,rc=0;
+  for(var j=1;j<=TOTAL;j++){
+    if(balls[j].loc==='left')lc++;else if(balls[j].loc==='right')rc++;
+  }
+  var smallL=lc>=4,smallR=rc>=4;
+  var bc=0;
+  for(var i=1;i<=TOTAL;i++){
+    var loc=balls[i].loc;
+    if(loc==='left'){leftEl.appendChild(ballEl(i,smallL));}
+    else if(loc==='right'){rightEl.appendChild(ballEl(i,smallR));}
+    else{benchEl.appendChild(ballEl(i,false));bc++;}
+  }
+  $('benchCount').textContent=bc;
+  attachBallEvents();
+}
+
+/* ---- tap to select / place ---- */
+function selectBall(id){
+  state.sel=(state.sel==id?null:parseInt(id,10));
+  $('selName').textContent=state.sel?('ball '+state.sel):'none';
+  render();
+}
+function place(side){
+  if(!state.sel){flash('Select a ball first');return;}
+  var from=balls[state.sel].loc;
+  balls[state.sel].loc=side;
+  if((side==='left'||side==='right')&&from!==side){
+    playPanNote(side,sideList(side).length);
+  }
+  resetBeam();render();
+}
+function markSelected(){
+  if(!state.sel){flash('Select a ball first');return;}
+  balls[state.sel].color=state.color;render();
+}
+
+/* ---- interaction: event delegation (one listener, survives re-render) ---- */
+var dragId=null;
+
+function attachBallEvents(){ /* no-op: handled via delegation below */ }
+
+// pointerup is the most reliable cross-device tap signal inside sandboxed webviews
+document.body.addEventListener('click',function(e){
+  var ball=e.target.closest?e.target.closest('.ball'):null;
+  if(ball){
+    selectBall(ball.dataset.id);
+    return;
+  }
+  var zone=e.target.closest?e.target.closest('.tappable'):null;
+  if(zone&&state.sel){
+    place(zone.dataset.side);
+  }
+},false);
+
+/* ---- touch drag (works in real browsers; harmless if sandbox blocks it) ---- */
+var touchEl=null,ghost=null,suppressClick=false,touchMoved=false,startX=0,startY=0;
+document.body.addEventListener('touchstart',function(e){
+  var ball=e.target.closest?e.target.closest('.ball'):null;
+  if(!ball)return;
+  touchEl=ball;touchMoved=false;
+  var t=e.touches[0];startX=t.clientX;startY=t.clientY;
+},{passive:true});
+document.body.addEventListener('touchmove',function(e){
+  if(!touchEl)return;
+  var t=e.touches[0];
+  var dx=t.clientX-startX,dy=t.clientY-startY;
+  if(!touchMoved && Math.abs(dx)+Math.abs(dy)>10){
+    touchMoved=true;
+    ghost=touchEl.cloneNode(true);
+    ghost.style.position='fixed';ghost.style.pointerEvents='none';ghost.style.opacity='.85';ghost.style.zIndex=999;ghost.style.margin=0;
+    document.body.appendChild(ghost);
+    touchEl.classList.add('drag');
+  }
+  if(touchMoved){
+    if(e.cancelable)e.preventDefault();
+    ghost.style.left=(t.clientX-26)+'px';
+    ghost.style.top=(t.clientY-26)+'px';
+  }
+},{passive:false});
+document.body.addEventListener('touchend',function(e){
+  if(!touchEl)return;
+  if(touchMoved){
+    var t=e.changedTouches[0];
+    if(ghost)ghost.style.display='none';
+    var below=document.elementFromPoint(t.clientX,t.clientY);
+    var zone=below&&below.closest?below.closest('.drop'):null;
+    if(zone){var sd=zone.dataset.side;var bid=touchEl.dataset.id;var was=balls[bid].loc;balls[bid].loc=sd;if((sd==='left'||sd==='right')&&was!==sd){playPanNote(sd,sideList(sd).length);}resetBeam();}
+    if(ghost){document.body.removeChild(ghost);ghost=null;}
+    touchEl.classList.remove('drag');
+    render();
+  }
+  // a stationary tap falls through to the body 'click' handler, which selects.
+  touchEl=null;touchMoved=false;
+},{passive:true});
+
+function resetBeam(){
+  $('beam').style.transform='translateX(-50%) rotate(0deg)';
+  $('panLeftWrap').style.transform='';
+  $('panRightWrap').style.transform='';
+  $('verdict').textContent='Place balls on the pans';
+  $('verdict').className='verdict';
+}
+
+/* ---- weigh ---- */
+function sideList(side){
+  var arr=[];for(var i=1;i<=TOTAL;i++){if(balls[i].loc===side)arr.push(i);}return arr;
+}
+function weigh(){
+  if(state.mode==='classic'&&state.used>=state.max){return;}
+  var L=sideList('left'),R=sideList('right');
+  if(L.length===0&&R.length===0){flash('Put some balls on the pans first');return;}
+  if(L.length!==R.length){flash('Pans must hold equal counts ('+L.length+' vs '+R.length+')');return;}
+  var lh=L.indexOf(state.odd)>=0,rh=R.indexOf(state.odd)>=0;
+  var tilt=0; // -1 left down, 1 right down, 0 balance
+  if(lh){tilt=state.dir==='heavy'?-1:1;}
+  else if(rh){tilt=state.dir==='heavy'?1:-1;}
+  state.used++;
+  animate(tilt);
+  logWeigh(L,R,tilt);
+  updateCounter();
+  if(state.mode==='classic'&&state.used>=state.max){
+    $('weighBtn').disabled=true;
+  }
+}
+function animate(tilt){
+  var deg=tilt===0?0:(tilt<0?-11:11);
+  $('beam').style.transform='translateX(-50%) rotate('+deg+'deg)';
+  // pans counter-translate so they hang level-ish
+  var off=tilt===0?0:22;
+  $('panLeftWrap').style.transform='translateY('+(tilt<0?off:-off)+'px)';
+  $('panRightWrap').style.transform='translateY('+(tilt>0?off:-off)+'px)';
+  var v=$('verdict');
+  if(tilt===0){v.textContent='Balanced';v.className='verdict';}
+  else if(tilt<0){v.textContent='Left side heavier';v.className='verdict tilt-l';}
+  else{v.textContent='Right side heavier';v.className='verdict tilt-r';}
+}
+function logWeigh(L,R,tilt){
+  var ul=$('log');
+  if(ul.children.length===1&&ul.children[0].textContent==='No weighings yet.'){ul.innerHTML='';}
+  var li=document.createElement('li');
+  var sym=tilt===0?'<span class="tip">=</span>':(tilt<0?'<span class="tilt-l">&lt; left down</span>':'<span class="tilt-r">right down &gt;</span>');
+  li.innerHTML='<b>#'+state.used+'</b> &nbsp;{'+L.join(', ')+'} &nbsp;vs&nbsp; {'+R.join(', ')+'} &nbsp;&rarr;&nbsp; '+sym;
+  ul.appendChild(li);
+}
+function flash(msg){
+  var v=$('verdict');v.textContent=msg;v.className='verdict';
+}
+
+/* ---- guess ---- */
+function buildGuessSelect(){
+  var s=$('guessBall');s.innerHTML='';
+  for(var i=1;i<=TOTAL;i++){var o=document.createElement('option');o.value=i;o.textContent='Ball '+i;s.appendChild(o);}
+}
+function submitGuess(){
+  var g=parseInt($('guessBall').value,10);
+  var dir=$('guessDir').value;
+  var r=$('result');
+  var correct=(g===state.odd&&dir===state.dir);
+  if(correct){
+    r.className='result win';
+    r.innerHTML='Correct. Ball '+state.odd+' is '+state.dir+'. Solved in '+state.used+' weighing'+(state.used===1?'':'s')+'.';
+    state.solved=true;
+  }else{
+    r.className='result lose';
+    var why=g!==state.odd?('Ball '+state.odd+' was the odd one, not '+g+'.'):('Right ball, wrong direction \u2014 it was '+state.dir+'.');
+    r.innerHTML='Not quite. '+why;
+  }
+}
+function reveal(){
+  var r=$('result');r.className='result lose';
+  r.innerHTML='The odd ball was <b>'+state.odd+'</b>, and it was <b>'+state.dir+'</b>.';
+}
+
+/* ---- mode + palette ---- */
+function setMode(m){
+  state.mode=m;state.max=(m==='classic'?3:Infinity);
+  $('tabClassic').classList.toggle('on',m==='classic');
+  $('tabInfinite').classList.toggle('on',m==='infinite');
+  $('weighBtn').disabled=false;
+  newRound();
+}
+var sw=document.querySelectorAll('.swatch');
+for(var k=0;k<sw.length;k++){
+  (function(el){el.addEventListener('click',function(){
+    for(var j=0;j<sw.length;j++){sw[j].classList.remove('on');}
+    el.classList.add('on');state.color=el.dataset.color;
+  });})(sw[k]);
+}
+
+/* wire */
+$('weighBtn').addEventListener('click',weigh);
+$('sendLeft').addEventListener('click',function(){place('left');});
+$('sendRight').addEventListener('click',function(){place('right');});
+$('sendBench').addEventListener('click',function(){place('bench');});
+$('markBtn').addEventListener('click',markSelected);
+$('tabClassic').addEventListener('click',function(){setMode('classic');});
+$('tabInfinite').addEventListener('click',function(){setMode('infinite');});
+$('submitGuess').addEventListener('click',submitGuess);
+$('reveal').addEventListener('click',reveal);
+$('newRound').addEventListener('click',function(){$('weighBtn').disabled=false;newRound();$('notes').value='';});
+$('clearPans').addEventListener('click',function(){for(var i=1;i<=TOTAL;i++){if(balls[i].loc!=='bench')balls[i].loc='bench';}render();resetBeam();});
+$('clearMarks').addEventListener('click',function(){for(var i=1;i<=TOTAL;i++){balls[i].color='';}render();});
+
+buildGuessSelect();
+newRound();
+</script>
+</body>
+</html>
