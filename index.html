@@ -168,7 +168,7 @@ select{background:var(--bg);border:1px solid var(--line);color:var(--ink);font-f
   <span class="pb-or">or</span>
   <button class="btn" id="markBtn">Mark colour</button>
 </div>
-<div class="hint">Tap a ball to select it, then tap a pan (or use the buttons). Drag also works where supported. The colour swatch on the right sets what <b>Mark colour</b> applies.</div>
+<div class="hint">Tap a bench ball to select it, then tap a pan to place it. Tap a ball that's on a pan to send it back. Each ball is its own note (1 lowest, 12 highest); Weigh sounds them all.</div>
 
 <div class="grid">
   <div class="card">
@@ -208,36 +208,34 @@ select{background:var(--bg);border:1px solid var(--line);color:var(--ink);font-f
 var TOTAL=12;
 var state={mode:'classic',max:3,used:0,odd:null,dir:null,solved:false,color:'',sel:null};
 
-/* ---- audio: each pan arpeggiates a chord as balls land ---- */
+/* ---- audio: each ball is a semitone in order (ball 1 lowest .. ball 12 highest) ---- */
 var actx=null;
-// frequencies (Hz). Left = C7 voicing C E G Bb D F. Right = Ebm7 extended Eb Gb Bb Db F Ab.
-var CHORD={
-  left:[261.63,329.63,392.00,466.16,587.33,698.46],
-  right:[311.13,369.99,466.16,554.37,698.46,830.61]
-};
+// C4 = 261.63 Hz. Ball n => n-1 semitones above C4 (12 balls = C4 up to B4).
+function ballFreq(id){return 261.63*Math.pow(2,(id-1)/12);}
 function audioCtx(){
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){actx=null;}}
   if(actx&&actx.state==='suspended'){actx.resume();}
   return actx;
 }
-function playNote(freq){
+function playNote(freq,when,dur,vol){
   var c=audioCtx();if(!c)return;
-  var t=c.currentTime;
+  var t=c.currentTime+(when||0);
+  var d=dur||0.9,v=vol||0.18;
   var o=c.createOscillator(),g=c.createGain();
   o.type='triangle';o.frequency.value=freq;
-  // soft bell-ish pluck
   g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(0.18,t+0.01);
-  g.gain.exponentialRampToValueAtTime(0.0008,t+0.9);
+  g.gain.linearRampToValueAtTime(v,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0008,t+d);
   o.connect(g);g.connect(c.destination);
-  o.start(t);o.stop(t+0.95);
+  o.start(t);o.stop(t+d+0.05);
 }
-function playPanNote(side,countAfter){
-  var arr=CHORD[side];if(!arr)return;
-  var idx=countAfter-1;
-  if(idx<0)return;
-  if(idx<arr.length){playNote(arr[idx]);}
-  else{playNote(arr[idx%arr.length]*2);} // beyond 6: octave up, wrap
+function playBall(id){playNote(ballFreq(id));}
+function playWeighChord(ids){
+  // sound every ball on the pans together (slight spread so the chord blooms)
+  audioCtx();
+  for(var i=0;i<ids.length;i++){
+    playNote(ballFreq(ids[i]),i*0.04,1.4,0.14);
+  }
 }
 var balls={}; // id -> {color, loc}
 
@@ -313,11 +311,21 @@ function selectBall(id){
 function place(side){
   if(!state.sel){flash('Select a ball first');return;}
   var from=balls[state.sel].loc;
-  balls[state.sel].loc=side;
+  var moved=state.sel;
+  balls[moved].loc=side;
   if((side==='left'||side==='right')&&from!==side){
-    playPanNote(side,sideList(side).length);
+    playBall(moved);
   }
   resetBeam();render();
+}
+function returnToBench(id){
+  id=parseInt(id,10);
+  if(balls[id].loc==='bench')return false;
+  balls[id].loc='bench';
+  playBall(id);
+  if(state.sel===id){state.sel=null;$('selName').textContent='none';}
+  resetBeam();render();
+  return true;
 }
 function markSelected(){
   if(!state.sel){flash('Select a ball first');return;}
@@ -333,7 +341,12 @@ function attachBallEvents(){ /* no-op: handled via delegation below */ }
 document.body.addEventListener('click',function(e){
   var ball=e.target.closest?e.target.closest('.ball'):null;
   if(ball){
-    selectBall(ball.dataset.id);
+    var id=ball.dataset.id;
+    if(balls[parseInt(id,10)].loc!=='bench'){
+      returnToBench(id); // a ball on a pan: tap sends it home
+    }else{
+      selectBall(id);    // a ball on the bench: tap selects it for placing
+    }
     return;
   }
   var zone=e.target.closest?e.target.closest('.tappable'):null;
@@ -374,7 +387,7 @@ document.body.addEventListener('touchend',function(e){
     if(ghost)ghost.style.display='none';
     var below=document.elementFromPoint(t.clientX,t.clientY);
     var zone=below&&below.closest?below.closest('.drop'):null;
-    if(zone){var sd=zone.dataset.side;var bid=touchEl.dataset.id;var was=balls[bid].loc;balls[bid].loc=sd;if((sd==='left'||sd==='right')&&was!==sd){playPanNote(sd,sideList(sd).length);}resetBeam();}
+    if(zone){var sd=zone.dataset.side;var bid=parseInt(touchEl.dataset.id,10);var was=balls[bid].loc;balls[bid].loc=sd;if((sd==='left'||sd==='right')&&was!==sd){playBall(bid);}resetBeam();}
     if(ghost){document.body.removeChild(ghost);ghost=null;}
     touchEl.classList.remove('drag');
     render();
@@ -400,6 +413,7 @@ function weigh(){
   var L=sideList('left'),R=sideList('right');
   if(L.length===0&&R.length===0){flash('Put some balls on the pans first');return;}
   if(L.length!==R.length){flash('Pans must hold equal counts ('+L.length+' vs '+R.length+')');return;}
+  playWeighChord(L.concat(R));
   var lh=L.indexOf(state.odd)>=0,rh=R.indexOf(state.odd)>=0;
   var tilt=0; // -1 left down, 1 right down, 0 balance
   if(lh){tilt=state.dir==='heavy'?-1:1;}
